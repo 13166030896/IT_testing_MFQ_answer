@@ -1,3 +1,13 @@
+Test Strategy Note
+1. Priority Strategy
+Inventory synchronization, order state machine and message idempotency are set as the highest priority, as they are the fundamental business guarantees of the e-commerce system and shall be fully tested first. The next priority covers core order flows, exception compensation and concurrency performance. Boundary scenarios, security and monitoring are assigned regular priority. Edge interactions and minor details will be optimized in subsequent iterations.
+2. Technical Trade-offs
+Adopt eventual consistency combined with scheduled reconciliation for cross-system synchronization to balance performance and data consistency.
+Implement circuit breaker, retry and compensation tasks for external dependencies including WMS and SC2P to prevent cascading failures.
+Apply traffic limiting and inventory pre-locking in high-concurrency scenarios to avoid overselling fundamentally.
+3. Quality Assurance Mechanism
+Deploy full-link logs, real-time monitoring and multi-dimensional alerts. Combined with regular fault drills and data repair procedures, the system ensures full observability and recoverability in production.
+
 测试策略说明
 1.优先级策略
 将库存同步、订单状态机、消息幂等设为最高优先级，是电商系统业务底线，优先全量覆盖；其次保障订单主流程、异常补偿与并发性能；边界场景、安全、监控为常规优先级；边缘交互细节后置迭代。
