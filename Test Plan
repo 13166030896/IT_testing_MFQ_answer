@@ -1,3 +1,101 @@
+MFQ Test Plan for E-commerce System
+├─ M Models
+│  ├─ 1. End-to-End Order Business Flow Model
+│  │  ├─ Normal Flow: Browse Products → Add to Cart → Place Order → Payment → Inventory Deduction → WMS Shipment → Sign-off → Order Completion
+│  │  └─ Exception Branches: Payment Failure / Order Cancellation / Partial Shipment / Return & Refund / Overselling
+│  ├─ 2. Order State Machine Model
+│  │  ├─ Order Status: Pending Payment, Paid, Pending Shipment, Shipped, Signed Off, Completed, Closed, Refunded
+│  │  ├─ Valid State Transition Rules
+│  │  ├─ Interception & Validation for Invalid State Jumps
+│  │  └─ Automatic Transition on Timeout (Auto-close orders with expired pending payment)
+│  ├─ 3. Inventory State Model
+│  │  ├─ Inventory Status: Available, Pre-locked, Deducted, Released, Restored after Return
+│  │  ├─ Order Placement: Pre-lock product inventory
+│  │  ├─ Payment Success: Convert pre-locked inventory to formal deduction
+│  │  ├─ Order Cancellation / Payment Timeout: Release pre-locked inventory
+│  │  └─ Return / Rejection: Restore inventory to available status
+│  ├─ 4. External System Interaction Model
+│  │  ├─ Storefront ↔ WMS: Outbound Order, Shipment Notification, Sign-off Notification
+│  │  ├─ Storefront ↔ SC2P Payment System: Payment Callback, Refund Callback
+│  │  ├─ Synchronization Modes: Synchronous Call, Asynchronous Message, Callback Notification
+│  │  └─ Basic Mechanisms: Request Retry, Message Idempotency, Exception Fallback
+│  └─ 5. Data Consistency Boundary Model
+│     ├─ Strong Consistency Scope: Real-time inventory deduction, order payment status
+│     ├─ Eventual Consistency Scope: WMS shipment status, cross-system inventory reconciliation
+│     └─ Reconciliation Nodes: T+1 Inventory Reconciliation, Order Status Reconciliation, Message Log Reconciliation
+├─ F Functional
+│  ├─ 1. Core Main Flow (Normal Path)
+│  │  ├─ Full Process: Place Order → Payment → Shipment → Sign-off
+│  │  └─ Normal Return Process: Return Application → Approval → Return Receipt → Inventory Restoration → Refund
+│  ├─ 2. Special Test for Inventory Synchronization Consistency (Mandatory)
+│  │  ├─ Inventory Reservation: Reservation Success, Reservation Failure
+│  │  ├─ Inventory Deduction: Deduction Success, Deduction Failure
+│  │  ├─ Order Cancellation & Inventory Release: Release inventory after cancellation, auto release on timeout
+│  │  ├─ Message Idempotency: No duplicate operations for repeated inventory messages
+│  │  └─ Out-of-order Messages: Normal status transition with disordered deduction/release messages
+│  ├─ 3. Boundary Scenario Testing
+│  │  ├─ Order validation for zero-stock products
+│  │  ├─ High-concurrency Flash Sale (Prevent overselling & under-selling)
+│  │  ├─ Partial Shipment / Split Shipment
+│  │  └─ Return Scenario & Inventory Restoration Validation
+│  ├─ 4. Core API Validation
+│  │  ├─ Order Creation API: Parameter check, required fields, error codes
+│  │  ├─ Inventory Operation API: Pre-lock / Deduction / Release, response code validation
+│  │  ├─ Payment Callback API: Signature verification, idempotency, status write-back
+│  │  └─ WMS Callback API: Shipment & sign-off callback, field validation
+│  └─ 5. Exception Handling & Compensation Strategy (Mandatory)
+│     ├─ API / Message Timeout Handling
+│     ├─ API Retry Mechanism (Payment, WMS, Inventory)
+│     ├─ Service Circuit Breaker & Degradation Strategy
+│     ├─ Scheduled Compensation Tasks (Stuck orders, inventory discrepancy, message resending)
+│     └─ Data Rollback & Status Recovery after Failures
+├─ Q Quality
+│  ├─ 1. Performance Metrics
+│  │  ├─ Concurrent TPS: Metrics for order, payment and inventory APIs
+│  │  ├─ Response Latency: P95 response time standard
+│  │  ├─ System Error Rate Threshold
+│  │  └─ Message Queue Throughput & Backlog Control
+│  ├─ 2. Reliability
+│  │  ├─ Validation for Timeout, Retry, Circuit Breaker & Degradation
+│  │  ├─ Fault Tolerance for External Dependencies (WMS / SC2P)
+│  │  ├─ No service interruption when single cluster node fails
+│  │  └─ No message loss or duplicate consumption
+│  ├─ 3. Observability
+│  │  ├─ Full-link Logging (Order, Inventory, Callback)
+│  │  ├─ Core Monitoring Metrics: Inventory discrepancy rate, message backlog, stuck orders
+│  │  └─ Alert Rules: Inventory anomaly, message backlog, stuck order alert
+│  ├─ 4. Security Capability
+│  │  ├─ API Authentication & Access Permission Control
+│  │  ├─ Sensitive Data Masking (Phone number, address, payment information)
+│  │  └─ Anti-brush & Malicious Request Interception
+│  └─ 5. Recoverability
+│     ├─ Fault Drills: Database, MQ and third-party service failure drills
+│     ├─ Abnormal Data Repair Process (Dirty data of inventory & orders)
+│     └─ Data Backup & Version Rollback Validation
+├─ Release Entry & Exit Criteria (Mandatory)
+│  ├─ Entry Criteria (Test Start Conditions)
+│  │  ├─ All smoke test cases of main flow passed
+│  │  ├─ Test environment & WMS/SC2P joint debugging environment ready
+│  │  ├─ Data isolation completed
+│  │  └─ Monitoring & alerts configured and effective
+│  └─ Exit Criteria (Release to Production)
+│     ├─ 100% of core functional test cases passed
+│     ├─ All inventory synchronization scenarios passed; no overselling or data inconsistency
+│     ├─ All performance metrics met requirements; no performance bottlenecks
+│     ├─ No P0/P1 defects; P2 defect repair rate meets standard
+│     └─ Reconciliation & compensation mechanisms verified
+└─ Test Strategy Note
+   ├─ Priority Classification
+   │  ├─ P0 Highest Priority: Inventory consistency, order state machine, idempotency control
+   │  ├─ P1 Second Priority: Main business flow, exception compensation, concurrency & performance
+   │  ├─ P2 Medium Priority: Boundary scenarios, security, monitoring & alerting
+   │  └─ P3 Low Priority: Edge interactions, minor prompt optimization
+   └─ Risks & Trade-offs
+      ├─ Inventory Risk: Cover risks via reconciliation & scheduled compensation; real-time monitoring and alerts
+      ├─ Concurrency Risk: Optimize via pressure test; adopt traffic limiting & degradation to guarantee core flow
+      └─ External Dependency Risk: Isolate faults via circuit breaker to avoid system avalanche
+
+
 电商系统MFQ测试计划
 ├─ M Models 模型层
 │  ├─ 1.端到端订单业务流模型
